@@ -10,12 +10,16 @@ use bevy::{
 use bevy_renet::{
     renet::{
         transport::{ClientAuthentication, ConnectToken, NetcodeClientTransport},
-        ConnectionConfig, RenetClient,
+        ConnectionConfig, DefaultChannel, RenetClient,
     },
     transport::NetcodeClientPlugin,
     RenetClientPlugin,
 };
-use my_bevy_game::{App, PluginGroup, Window, WindowPlugin, PRIVATE_KEY, PROTOCOL_ID};
+use log::info;
+use my_bevy_game::{
+    App, ButtonInput, ClientMessage, KeyCode, PluginGroup, Res, ResMut, ServerMessage, Update,
+    Window, WindowPlugin, PRIVATE_KEY, PROTOCOL_ID,
+};
 
 fn main() {
     let (client, transport) = create_renet_client();
@@ -43,6 +47,7 @@ fn main() {
         .add_plugins(NetcodeClientPlugin)
         .insert_resource(client)
         .insert_resource(transport)
+        .add_systems(Update, client_ping)
         .run();
 }
 
@@ -80,4 +85,22 @@ fn create_renet_client() -> (RenetClient, NetcodeClientTransport) {
             .expect("Can't create transport client");
 
     (client, transport)
+}
+
+fn client_ping(mut client: ResMut<RenetClient>, keyboard: Res<ButtonInput<KeyCode>>) {
+    if keyboard.just_pressed(KeyCode::Space) {
+        let ping_message: Vec<u8> =
+            bincode::serialize(&ClientMessage::Ping).expect("Can't send ping msg from client");
+        client.send_message(DefaultChannel::ReliableOrdered, ping_message);
+        info!("ping sent!")
+    }
+
+    while let Some(message) = client.receive_message(DefaultChannel::ReliableOrdered) {
+        let server_message = bincode::deserialize(&message).expect("Can't read server's message");
+        match server_message {
+            ServerMessage::Pong => {
+                info!("Got Pong response from server !")
+            }
+        }
+    }
 }

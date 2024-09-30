@@ -6,8 +6,7 @@ use std::{
 use bevy::log::{Level, LogPlugin};
 use my_bevy_game::*;
 use renet::{
-    transport::{NetcodeServerTransport, ServerAuthentication, ServerConfig},
-    ConnectionConfig, RenetServer, ServerEvent,
+    transport::{NetcodeServerTransport, ServerAuthentication, ServerConfig}, ConnectionConfig, DefaultChannel, RenetServer, ServerEvent,
 };
 use transport::NetcodeServerPlugin;
 
@@ -25,7 +24,7 @@ fn main() {
         .add_plugins(NetcodeServerPlugin)
         .insert_resource(server)
         .insert_resource(transport)
-        .add_systems(Update, server_events)
+        .add_systems(Update, (server_events, server_ping).chain())
         .run();
 }
 
@@ -68,8 +67,30 @@ fn create_renet_server() -> (RenetServer, NetcodeServerTransport) {
 fn server_events(mut events: EventReader<ServerEvent>) {
     for event in events.read() {
         match event {
-            ServerEvent::ClientConnected{client_id } => info!("New client connected with id {client_id}"),
-            ServerEvent::ClientDisconnected { client_id, reason } => info!("Client with id {client_id} disconnected [{reason}]")
+            ServerEvent::ClientConnected { client_id } => {
+                info!("New client connected with id {client_id}")
+            }
+            ServerEvent::ClientDisconnected { client_id, reason } => {
+                info!("Client with id {client_id} disconnected [{reason}]")
+            }
+        }
+    }
+}
+
+fn server_ping(mut server: ResMut<RenetServer>) {
+    for client_id in server.clients_id().into_iter() {
+        while let Some(message) = server.receive_message(client_id, DefaultChannel::ReliableOrdered)
+        {
+            let client_message: ClientMessage =
+                bincode::deserialize(&message).expect("Can't read client msg in server");
+            let pong: Vec<u8> =
+                bincode::serialize(&ServerMessage::Pong).expect("Can't send Pong message");
+            match client_message {
+                ClientMessage::Ping => {
+                    info!("Got ping from {client_id}");
+                    server.send_message(client_id, DefaultChannel::ReliableOrdered, pong);
+                }
+            }
         }
     }
 }
