@@ -8,7 +8,6 @@ use bevy::{
     DefaultPlugins,
 };
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use bevy_inspector_egui_rapier::InspectableRapierPlugin;
 use bevy_rapier3d::{
     plugin::{NoUserData, RapierPhysicsPlugin},
     prelude::{Collider, Restitution, RigidBody},
@@ -24,7 +23,9 @@ use bevy_renet::{
 };
 use log::info;
 use my_bevy_game::{
-    App, ButtonInput, Camera3d, Camera3dBundle, ClientMessage, Commands, IntoSystemConfigs, KeyCode, Name, PluginGroup, Res, ResMut, ServerMessage, Startup, Transform, TransformBundle, Update, Vec3, Window, WindowPlugin, PRIVATE_KEY, PROTOCOL_ID
+    App, ButtonInput, Camera3dBundle, ClientMessage, Commands, IntoSystemConfigs,
+    KeyCode, Name, PluginGroup, Res, ResMut, ServerMessage, Startup,
+    Transform, TransformBundle, Update, Vec3, Window, WindowPlugin, PRIVATE_KEY, PROTOCOL_ID,
 };
 
 fn main() {
@@ -67,7 +68,7 @@ fn create_renet_client() -> (RenetClient, NetcodeClientTransport) {
     let current_time: Duration = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .expect("Error during time.now()");
-    let socket: UdpSocket = UdpSocket::bind("127.0.0.1:0").expect("can't bind UdpSocket");
+    let socket: UdpSocket = UdpSocket::bind("127.0.0.1:3000").expect("can't bind UdpSocket");
     let client_id: u64 = current_time.as_millis() as u64;
     let connection_cfg: ConnectionConfig = ConnectionConfig::default();
 
@@ -119,7 +120,8 @@ fn client_ping(mut client: ResMut<RenetClient>, keyboard: Res<ButtonInput<KeyCod
 
 fn spawn_camera(mut commands: Commands) {
     commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 30.0, 50.0).looking_at(Vec3::new(0.0, 5.0, 0.0), Vec3::Y),
+        transform: Transform::from_xyz(0.0, 30.0, 50.0)
+            .looking_at(Vec3::new(0.0, 5.0, 0.0), Vec3::Y),
         ..Default::default()
     });
 }
